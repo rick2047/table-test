@@ -72,7 +72,7 @@
         <tr>
             <th>ID</th>
             <th>Joke</th>
-            <th>Comment</th>
+            <th>URL</th>
             <th>Category</th>
         </tr>
     </table>
@@ -109,11 +109,12 @@
             const jokeCell = document.createElement("td");
             jokeCell.textContent = joke;
 
-            const commentCell = document.createElement("td");
-            const commentInput = document.createElement("input");
-            commentInput.type = "text";
-            commentInput.placeholder = "Add a comment...";
-            commentCell.appendChild(commentInput);
+            const urlCell = document.createElement("td");
+            const urlInput = document.createElement("input");
+            urlInput.type = "url";
+            urlInput.placeholder = "Add a valid URL...";
+            urlInput.pattern = "https?://.+";
+            urlCell.appendChild(urlInput);
 
             const categoryCell = document.createElement("td");
             const categorySelect = document.createElement("select");
@@ -128,7 +129,7 @@
 
             newRow.appendChild(idCell);
             newRow.appendChild(jokeCell);
-            newRow.appendChild(commentCell);
+            newRow.appendChild(urlCell);
             newRow.appendChild(categoryCell);
 
             return newRow;
@@ -166,14 +167,17 @@
             }
             const jokes = await Promise.all(jokePromises);
             const tableElm = document.getElementById("joke-table");
+
+            const fragment = document.createDocumentFragment();
             for (const data of jokes) {
                 if (!data || displayedJokes.has(data.id)) {
                     continue;
                 }
                 const newRow = createJokeRow(data.id, data.joke);
-                tableElm.appendChild(newRow);
+                fragment.appendChild(newRow);
                 displayedJokes.add(data.id);
             }
+            tableElm.appendChild(fragment);
 
             while (tableElm.rows.length > MAX_JOKES + 1) {
                 tableElm.deleteRow(1);
