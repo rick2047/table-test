@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REST on Table</title>
+    <style>
+        body {
+          background-color: #121212;
+          color: #e0e0e0;
+        }
+    
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          color: #e0e0e0;
+        }
+    
+        th, td {
+          padding: 10px;
+          border: 1px solid #555;
+          text-align: left;
+        }
+    
+        th {
+          background-color: #1e1e1e;
+          font-weight: bold;
+        }
+    
+        tr:nth-child(even) {
+          background-color: #2a2a2a;
+        }
+    
+        tr:hover {
+          background-color: #333;
+        }
+    
+        button {
+          margin-top: 10px;
+          margin-bottom: 20px;
+          padding: 10px 15px;
+          background-color: #6b8e23;
+          color: white;
+          border: none;
+          cursor: pointer;
+          font-size: 16px;
+        }
+    
+        button:hover {
+          background-color: #556b2f;
+        }
+
+        #error-message {
+          color: red;
+          margin-top: 10px;
+        }
+    </style>
+    
+</head>
+<body>
+    <button id="get-joke">Get new joke</button>
+    <input type="number" id="joke-count" placeholder="Number of jokes" min="1" style="margin-left: 10px;">
+    <button id="get-multiple-jokes">Get multiple jokes</button>
+    <div id="error-message"></div>
+    <table id="joke-table">
+        <colgroup>
+            <col style="width: 5%;">
+            <col style="width: 55%;">
+            <col style="width: 20%;">
+            <col style="width: 20%;">
+          </colgroup>
+        <tr>
+            <th>ID</th>
+            <th>Joke</th>
+            <th>Comment</th>
+            <th>Category</th>
+        </tr>
+    </table>
+    <button id="save-jokes" style="margin-top: 10px;">Save Jokes</button>
+
+    <script>
+        const displayedJokes = new Set();
+        const MAX_JOKES = 1000;
+
+        async function getJoke() {
+            try {
+                const response = await fetch('https://icanhazdadjoke.com/', {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                if (response.ok) {
+                    return await response.json();
+                } else {
+                    throw new Error('Failed to fetch joke');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('error-message').textContent = 'Could not fetch joke. Please try again later.';
+            }
+        }
+
+        function createJokeRow(id, joke) {
+            const newRow = document.createElement("tr");
+
+            const idCell = document.createElement("td");
+            idCell.textContent = id;
+
+            const jokeCell = document.createElement("td");
+            jokeCell.textContent = joke;
+
+            const commentCell = document.createElement("td");
+            const commentInput = document.createElement("input");
+            commentInput.type = "text";
+            commentInput.placeholder = "Add a comment...";
+            commentCell.appendChild(commentInput);
+
+            const categoryCell = document.createElement("td");
+            const categorySelect = document.createElement("select");
+            const categories = ["Funny", "Dad Joke", "Punny", "Cheesy"];
+            categories.forEach(category => {
+                const option = document.createElement("option");
+                option.value = category;
+                option.textContent = category;
+                categorySelect.appendChild(option);
+            });
+            categoryCell.appendChild(categorySelect);
+
+            newRow.appendChild(idCell);
+            newRow.appendChild(jokeCell);
+            newRow.appendChild(commentCell);
+            newRow.appendChild(categoryCell);
+
+            return newRow;
+        }
+
+        async function getNewJoke() {
+            const data = await getJoke();
+            if (!data) return;
+
+            if (displayedJokes.has(data.id)) {
+                document.getElementById('error-message').textContent = 'Duplicate joke detected. Please try again.';
+                return;
+            }
+
+            const tableElm = document.getElementById("joke-table");
+            const newRow = createJokeRow(data.id, data.joke);
+            tableElm.appendChild(newRow);
+            displayedJokes.add(data.id);
+
+            if (tableElm.rows.length > MAX_JOKES + 1) {
+                tableElm.deleteRow(1);
+            }
+        }
+
+        async function getMultipleJokes() {
+            const jokeCount = parseInt(document.getElementById('joke-count').value);
+            if (isNaN(jokeCount) || jokeCount <= 0) {
+                document.getElementById('error-message').textContent = 'Please enter a valid number of jokes.';
+                return;
+            }
+            document.getElementById('error-message').textContent = '';
+            const jokePromises = [];
+            for (let i = 0; i < jokeCount; i++) {
+                jokePromises.push(getJoke());
+            }
+            const jokes = await Promise.all(jokePromises);
+            const tableElm = document.getElementById("joke-table");
+            for (const data of jokes) {
+                if (!data || displayedJokes.has(data.id)) {
+                    continue;
+                }
+                const newRow = createJokeRow(data.id, data.joke);
+                tableElm.appendChild(newRow);
+                displayedJokes.add(data.id);
+            }
+
+            while (tableElm.rows.length > MAX_JOKES + 1) {
+                tableElm.deleteRow(1);
+            }
+        }
+
+        document.getElementById("get-joke").addEventListener("click", () => {
+            document.getElementById('error-message').textContent = '';
+            getNewJoke();
+        });
+        document.getElementById("get-multiple-jokes").addEventListener("click", () => {
+            document.getElementById('error-message').textContent = '';
+            getMultipleJokes();
+        });
+    </script>
+</body>
+</html>
